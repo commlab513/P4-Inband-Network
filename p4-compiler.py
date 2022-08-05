@@ -1,5 +1,8 @@
 import struct,socket,os,sys,re,random,json,paramiko,logging,time
 
+username = "user"
+password = "user"
+PM_information = "PM_Information_25_nodes.json"
 logger = logging.getLogger('P4-Compiler')
 logger.setLevel(logging.INFO)
 ch = logging.StreamHandler()
@@ -38,7 +41,7 @@ def _byteify(data):
         return { _byteify(key): _byteify(value) for key, value in data.items() }
     return data
 try:
-    f = open("./topology-profiles/PM_Information_25_nodes.json", "r")
+    f = open("./topology-profiles/%s"%PM_information, "r")
     topology_data = _byteify(json.load(f, object_hook=_byteify))
     f.close()
     for sid in topology_data:
@@ -65,19 +68,19 @@ try:
             os.system("p4c-bm2-ss --p4v 16 --p4runtime-files ./p4_script/build/s%d/switch.p4info.txt -o ./p4_script/build/s%d/switch.json ./p4_script/p4_files/switch%d.p4"%(sid,sid,sid))
         except (KeyboardInterrupt):
             exit()
-        # try:    
-        #     control_ip = topology_data[sid]["control_ip"]
-        #     client = paramiko.Transport((control_ip, 22))
-        #     client.connect(username="mountain", password="pw1888hk")
-        #     sftp = paramiko.SFTPClient.from_transport(client)
-        #     logger.info("sftp[%s]: switch.json"%control_ip)
-        #     sftp.put("./p4_script/build/s%d/switch.json"%(sid), "/home/mountain/Switch/switch.json")
-        #     logger.info("sftp[%s]: receiver.py"%control_ip)
-        #     sftp.put("./p4_script/receiver.py", "/home/mountain/Switch/receiver.py")
-        #     client.close()
-        # except:
-        #     print ("PC %s not found"%control_ip)
-        #     pass
+        try:    
+            control_ip = topology_data[sid]["control_ip"]
+            client = paramiko.Transport((control_ip, 22))
+            client.connect(username=username, password=password)
+            sftp = paramiko.SFTPClient.from_transport(client)
+            logger.info("sftp[%s]: switch.json"%control_ip)
+            sftp.put("./p4_script/build/s%d/switch.json"%(sid), "/home/%s/Switch/switch.json"username)
+            logger.info("sftp[%s]: receiver.py"%control_ip)
+            sftp.put("./p4_script/receiver.py", "/home/%s/Switch/receiver.py"%username)
+            client.close()
+        except:
+            print ("PC %s not found"%control_ip)
+            pass
     
     json_file = open("./p4_script/p4_files/swinfo.json", "w")
     json_file.write(json.dumps(dict_swinfo))
