@@ -1,6 +1,6 @@
 # P4-Inband-Network Testbed 
 > This repo is for building a P4IBN Testbed. 
----<br \>
+
 ## System requirement:
 <dl>
   <dt>Hardware:</dt>
@@ -15,7 +15,7 @@
     <b>Python</b>: 3.8.10 <br />
   </dd>
 </dl>
----<br \>
+
 ## Installation:
 <dl>
   <dt> Controller: </dt>
@@ -29,13 +29,12 @@
     Install Protocol buffer, gRPC, Behavioral Model v2 (bmv2) : The installation refer to github (https://github.com/jafingerhut/p4-guide)
   </dd>
 </dl>
----<br \>
+
 ## Testbed Configuration
-1. Modify the control IP addresses form the PM information JSON file at ./topology-profiles <br \>
-> The control IP address is used for startup/shutdown P4 switch, and SSH connection to switches.<br \>
+1. Modify the control IP addresses form the PM information JSON file at ./topology-profiles. 
+> The control IP address is used for startup/shutdown P4 switch, and SSH connection to switches. 
 2. Compile P4 switch behaviors
 <br />Since the authentication code are different, the compiler helps to generate difference authentication code for each P4 switch.
 <br />The swinfo.json collected all switch informatiom, it used for the controller authenticating new switches. 
 > python3 ./p4-compiler.py 
-3. run shell script to test system.
-<br />run_sft.sh for single failure test. <br />run_mft.sh for multiple failures test.<br \>
+3. run shell script to test system. <br />run_sft.sh for single failure test. <br />run_mft.sh for multiple failures test. 
