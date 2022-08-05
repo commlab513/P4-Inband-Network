@@ -1,0 +1,177 @@
+{
+    "141":{
+        "name": "s1",
+        "control_ip":"192.168.1.141",
+        "host_ip":"10.0.0.141", 
+        "switch_ip":"172.16.50.141", 
+        "interfaces": ["enp4s0", "enp1s0", "enp2s0", "enp3s0", "enp7s0"]
+    },
+    "143":{
+        "name": "s2",
+        "control_ip":"192.168.1.143",
+        "host_ip":"10.0.0.143", 
+        "switch_ip":"172.16.50.143", 
+        "interfaces": ["enp0s31f6", "enp9s0", "enp1s0", "enp5s0", "enp6s0"]
+    },
+    "149":{
+        "name": "s3",
+        "control_ip":"192.168.1.149",
+        "host_ip":"10.0.0.149", 
+        "switch_ip":"172.16.50.149", 
+        "interfaces": ["enp0s31f6", "enp1s0", "enp7s0", "enp5s0", "enp2s0"]
+    },
+    "142":{
+        "name": "s4",
+        "control_ip":"192.168.1.142",
+        "host_ip":"10.0.0.142", 
+        "switch_ip":"172.16.50.142", 
+        "interfaces": ["enp3s0", "enp1s0", "enp8s0", "enp7s0", "enp6s0"]
+    },
+    "144":{
+        "name": "s5",
+        "control_ip":"192.168.1.144",
+        "host_ip":"10.0.0.144", 
+        "switch_ip":"172.16.50.144", 
+        "interfaces": ["enp3s0", "enp1s0", "enp8s0", "enp7s0", "enp6s0"]
+    },
+    "147":{
+        "name": "s6",
+        "control_ip":"192.168.1.147",
+        "host_ip":"10.0.0.147", 
+        "switch_ip":"172.16.50.147", 
+        "interfaces": ["enp0s31f6", "enp7s0", "enp1s0", "enp3s0", "enp6s0"]
+    },
+    "157":{
+        "name": "s7",
+        "control_ip":"192.168.1.157",
+        "host_ip":"10.0.0.157", 
+        "switch_ip":"172.16.50.157", 
+        "interfaces": ["enp0s31f6", "enp9s0", "enp1s0", "enp5s0", "enp6s0"]
+    },
+    "154":{
+        "name": "s8",
+        "control_ip":"192.168.1.154",
+        "host_ip":"10.0.0.154", 
+        "switch_ip":"172.16.50.154", 
+        "interfaces": ["enp0s31f6", "enp5s0", "enp1s0", "enp8s0", "enp6s0"]
+    },
+    "150":{
+        "name": "s9",
+        "control_ip":"192.168.1.150",
+        "host_ip":"10.0.0.150", 
+        "switch_ip":"172.16.50.150", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0", "enp7s0"]
+    },
+    "148":{
+        "name": "s10",
+        "control_ip":"192.168.1.148",
+        "host_ip":"10.0.0.148", 
+        "switch_ip":"172.16.50.148", 
+        "interfaces": ["enp6s0", "enp3s0", "enp1s0"]
+    },
+    "151":{
+        "name": "s11",
+        "control_ip":"192.168.1.151",
+        "host_ip":"10.0.0.151", 
+        "switch_ip":"172.16.50.151", 
+        "interfaces": ["enp5s0", "enp6s0", "enp7s0", "enp3s0", "enp8s0"]
+    },
+    "165":{
+        "name": "s12",
+        "control_ip":"192.168.1.165",
+        "host_ip":"10.0.0.165", 
+        "switch_ip":"172.16.50.165", 
+        "interfaces": ["enp0s31f6", "enp9s0", "enp1s0", "enp5s0", "enp6s0"]
+    },
+    "164":{
+        "name": "s13",
+        "control_ip":"192.168.1.164",
+        "host_ip":"10.0.0.164", 
+        "switch_ip":"172.16.50.164", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0", "enp7s0"]
+    },
+    "145":{
+        "name": "s14",
+        "control_ip":"192.168.1.145",
+        "host_ip":"10.0.0.145", 
+        "switch_ip":"172.16.50.145", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0"]
+    },
+    "155":{
+        "name": "s15",
+        "control_ip":"192.168.1.155",
+        "host_ip":"10.0.0.155", 
+        "switch_ip":"172.16.50.155", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0"]
+    },
+    "159":{
+        "name": "s16",
+        "control_ip":"192.168.1.159",
+        "host_ip":"10.0.0.159", 
+        "switch_ip":"172.16.50.159", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0", "enp7s0"]
+    },
+    "152":{
+        "name": "s17",
+        "control_ip":"192.168.1.152",
+        "host_ip":"10.0.0.152", 
+        "switch_ip":"172.16.50.152", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0", "enp7s0"]
+    },
+    "146":{
+        "name": "s18",
+        "control_ip":"192.168.1.146",
+        "host_ip":"10.0.0.146", 
+        "switch_ip":"172.16.50.146", 
+        "interfaces": ["enp8s0", "enp5s0", "enp1s0", "enp3s0"]
+    },
+    "163":{
+        "name": "s19",
+        "control_ip":"192.168.1.163",
+        "host_ip":"10.0.0.163", 
+        "switch_ip":"172.16.50.163", 
+        "interfaces": ["enp0s31f6", "enp4s0", "enp1s0", "enp7s0", "enp5s0"]
+    },
+    "162":{
+        "name": "s20",
+        "control_ip":"192.168.1.162",
+        "host_ip":"10.0.0.162", 
+        "switch_ip":"172.16.50.162", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0", "enp7s0"]
+    },
+    "156":{
+        "name": "s21",
+        "control_ip":"192.168.1.156",
+        "host_ip":"10.0.0.156", 
+        "switch_ip":"172.16.50.156", 
+        "interfaces": ["enp8s0", "enp5s0", "enp1s0", "enp3s0"]
+    },
+    "158":{
+        "name": "s22",
+        "control_ip":"192.168.1.158",
+        "host_ip":"10.0.0.158", 
+        "switch_ip":"172.16.50.158", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0"]
+    },
+    "153":{
+        "name": "s23",
+        "control_ip":"192.168.1.153",
+        "host_ip":"10.0.0.153", 
+        "switch_ip":"172.16.50.153", 
+        "interfaces": ["enp8s0", "enp5s0", "enp1s0", "enp3s0", "enp4s0"]
+    },
+    "160":{
+        "name": "s24",
+        "control_ip":"192.168.1.160",
+        "host_ip":"10.0.0.160", 
+        "switch_ip":"172.16.50.160", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0"]
+    },
+    "161":{
+        "name": "s25",
+        "control_ip":"192.168.1.161",
+        "host_ip":"10.0.0.161", 
+        "switch_ip":"172.16.50.161", 
+        "interfaces": ["eno1", "enp6s0", "enp1s0", "enp5s0"]
+    }
+}

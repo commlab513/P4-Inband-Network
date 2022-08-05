@@ -1,0 +1,262 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 34689979
+    name: "MyIngress.ipv4_forwarding"
+    alias: "ipv4_forwarding"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.srcAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  match_fields {
+    id: 3
+    name: "metadata.forwarding_message_type"
+    bitwidth: 1
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 21240661
+  }
+  size: 16384
+}
+tables {
+  preamble {
+    id: 46963962
+    name: "MyIngress.arp_forwarding"
+    alias: "arp_forwarding"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.arp_rarp_ipv4.srcProtoAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "hdr.arp_rarp_ipv4.dstProtoAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 21240661
+  }
+  size: 16384
+}
+tables {
+  preamble {
+    id: 43391561
+    name: "MyIngress.cu_switch_port"
+    alias: "cu_switch_port"
+  }
+  match_fields {
+    id: 1
+    name: "standard_metadata.ingress_port"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 25652968
+  }
+  size: 16384
+}
+tables {
+  preamble {
+    id: 34674393
+    name: "MyIngress.sr_switch_port"
+    alias: "sr_switch_port"
+  }
+  match_fields {
+    id: 1
+    name: "standard_metadata.ingress_port"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  action_refs {
+    id: 21257015
+  }
+  action_refs {
+    id: 25652968
+  }
+  size: 16384
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 25652968
+    name: "MyIngress.drop"
+    alias: "drop"
+  }
+}
+actions {
+  preamble {
+    id: 21240661
+    name: "MyIngress.set_output"
+    alias: "set_output"
+  }
+  params {
+    id: 1
+    name: "priority"
+    bitwidth: 3
+  }
+  params {
+    id: 2
+    name: "port"
+    bitwidth: 9
+  }
+}
+actions {
+  preamble {
+    id: 22153844
+    name: "MyIngress.S2C_message"
+    alias: "S2C_message"
+  }
+}
+actions {
+  preamble {
+    id: 23122738
+    name: "MyIngress.C2S_forwarding_packet"
+    alias: "C2S_forwarding_packet"
+  }
+}
+actions {
+  preamble {
+    id: 21457665
+    name: "MyIngress.C2S_multicast_packet"
+    alias: "C2S_multicast_packet"
+  }
+}
+actions {
+  preamble {
+    id: 18744419
+    name: "MyIngress.switch_alive_reply"
+    alias: "switch_alive_reply"
+  }
+}
+actions {
+  preamble {
+    id: 32831665
+    name: "MyIngress.check_state_reply"
+    alias: "check_state_reply"
+  }
+}
+actions {
+  preamble {
+    id: 24095095
+    name: "MyIngress.configuration_update_reply"
+    alias: "configuration_update_reply"
+  }
+}
+actions {
+  preamble {
+    id: 27108265
+    name: "MyIngress.switch_discovery_message_reply"
+    alias: "switch_discovery_message_reply"
+  }
+}
+actions {
+  preamble {
+    id: 24065934
+    name: "MyIngress.network_monitoring_message_reply"
+    alias: "network_monitoring_message_reply"
+  }
+}
+controller_packet_metadata {
+  preamble {
+    id: 81826293
+    name: "packet_in"
+    alias: "packet_in"
+    annotations: "@controller_header(\"packet_in\")"
+  }
+  metadata {
+    id: 1
+    name: "preamble"
+    bitwidth: 64
+  }
+}
+controller_packet_metadata {
+  preamble {
+    id: 76689799
+    name: "packet_out"
+    alias: "packet_out"
+    annotations: "@controller_header(\"packet_out\")"
+  }
+  metadata {
+    id: 1
+    name: "preamble"
+    bitwidth: 64
+  }
+}
+registers {
+  preamble {
+    id: 372602518
+    name: "MyIngress.initialization"
+    alias: "initialization"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 381865901
+    name: "MyIngress.control_port"
+    alias: "control_port"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 16
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 382972168
+    name: "MyIngress.switch_discovery_timestamp"
+    alias: "switch_discovery_timestamp"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1
+}
+type_info {
+}
