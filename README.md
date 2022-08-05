@@ -13,7 +13,7 @@
   <dd>
     <b>Username</b>: user<br />
     <b>Password</b>: user<br />
-    [You can modify the username and password, but make sure the username and password in p4-compiler.py are also updated. ]
+    [You can modify the username and password, but make sure the username and password in p4-compiler.py are also updated. ]<br />
     <b>OS</b>: Ubuntu 20.04.4<br />
     <b>Python</b>: 3.8.10 <br />
   </dd>
