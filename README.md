@@ -32,10 +32,10 @@
 ---
 ## Testbed Configuration
 1. Modify the control IP addresses form the PM information JSON file at ./topology-profiles <br \>
-> The control IP address is used for startup/shutdown P4 switch, and SSH connection to switches.
+> The control IP address is used for startup/shutdown P4 switch, and SSH connection to switches.<br \>
 2. Compile P4 switch behaviors
 <br />Since the authentication code are different, the compiler helps to generate difference authentication code for each P4 switch.
 <br />The swinfo.json collected all switch informatiom, it used for the controller authenticating new switches. 
 > python3 ./p4-compiler.py 
 3. run shell script to test system.
-<br />run_sft.sh for single failure test. <br />run_mft.sh for multiple failures test.
+<br />run_sft.sh for single failure test. <br />run_mft.sh for multiple failures test.<br \>
