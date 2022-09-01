@@ -74,7 +74,7 @@ try:
             client.connect(username=username, password=password)
             sftp = paramiko.SFTPClient.from_transport(client)
             logger.info("sftp[%s]: switch.json"%control_ip)
-            sftp.put("./p4_script/build/s%d/switch.json"%(sid), "/home/%s/Switch/switch.json"username)
+            sftp.put("./p4_script/build/s%d/switch.json"%(sid), "/home/%s/Switch/switch.json"%username)
             logger.info("sftp[%s]: receiver.py"%control_ip)
             sftp.put("./p4_script/receiver.py", "/home/%s/Switch/receiver.py"%username)
             client.close()
