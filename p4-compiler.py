@@ -46,13 +46,16 @@ try:
     f.close()
     for sid in topology_data:
         switch_ip = topology_data[sid]["switch_ip"]
-        int_switch_ip = (struct.unpack("!I",socket.inet_aton(switch_ip))[0])
+        switch_mac = ("08:00:00:00:00:%02x"%sid).split(":")
+        int_switch_ip = struct.unpack("!I",socket.inet_aton(switch_ip))[0]
+        int_switch_mac = struct.unpack("!I",int(switch_mac, replace(":", ""), 16))
         int_authentication_code = random.randint(0, 281474976710655)
         dict_swinfo.setdefault('%d'%(sid), {"authentication_code": int_authentication_code, "switch_ip": switch_ip})
         new_info = open("./p4_script/p4_files/swinfo/sw%dinfo.p4"%(sid), "w")
         info_data = str(temp_swinfo_data)
         info_data = re.sub('%device_id%', '%d'%(sid), info_data)
         info_data = re.sub('%switch_ip%', '%d'%(int_switch_ip), info_data)
+        info_data = re.sub('%switch_mac%', '%d'%(int_switch_mac), info_data)
         info_data = re.sub('%auth_code%', '%d'%(int_authentication_code), info_data)
         new_info.write(info_data)
         new_info.close()
