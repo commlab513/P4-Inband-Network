@@ -1,6 +1,8 @@
 # include <core.p4>
 # include <v1model.p4>
-const bit<32>   device_id   = %device_id%;
-const bit<32>   switch_ip   = %switch_ip%;
-const bit<48>   authentication_code = %auth_code%;
+const bit<16>   device_id   = 16w%device_id%;
+const bit<48>   authentication_code = 48w%auth_code%;
+
+const bit<32>   switch_ip   = 32w%switch_ip%;
+const bit<32>   switch_mac   = 32w%switch_mac_address%;
 
