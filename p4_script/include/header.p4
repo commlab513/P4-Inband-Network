@@ -7,16 +7,6 @@ typedef bit<32>  ip4Addr_t;
 typedef bit<9>   PortID_t;
 typedef bit<32>  SessionID_t;
 
-@controller_header("packet_in")
-header  packet_in_header_t {
-    bit<64>     preamble;
-}
-
-@controller_header("packet_out")
-header  packet_out_header_t {
-    bit<64>     preamble;
-}
-
 header ethernet_t {
     macAddr_t   dstAddr;
     macAddr_t   srcAddr;
@@ -74,53 +64,56 @@ header tcp_t {
 }
 
 // P4-In-Band-Network-Headers
-header P4_inband_control_header_t {
-    bit<8>      type;
-    bit<8>      mtype;
+header P4IBN_message_header_t {
+    bit<8>  type;
 }
 
-//   Controller-to-Switch Messages
-header  C2S_message_packet_out_header_t {
-    bit<32>     target_switch_id;
-    bit<16>     target_port_id;
-    bit<8>      inner_type;
-    bit<8>      inner_mtype;
+header switch_alive_query_message_header_t {
+    bit<16> target_switch_id;
+}
+header switch_alive_response_message_header_t {
+    bit<16> response_switch_id;
 }
 
-//   Switch-to-Controller Messages
-header  S2C_message_packet_in_header_t {
-    bit<32>     sender_switch_id;
-    bit<16>     sender_port_id;
-    bit<8>      inner_type;
-    bit<8>      inner_mtype;
+header switch_discovery_message_header_t { 
+    bit<16> transit_switch_id;
+    bit<16> transit_switch_port_id;
 }
-
-header switch_alive_message_header_t {
-    bit<32>     switch_id;
-}
-header check_state_message_header_t {
-    bit<32>     switch_id;
-}
-// Switch-to-Switch Messages
-header switch_discovery_message_header_t { }
 header switch_registration_message_header_t {
-    bit<32>     switch_id;
-    bit<48>     auth_code;
-    bit<16>     swithc_port_id;
+    bit<16> transit_switch_id;
+    bit<16> transit_switch_port_id;
+    bit<16> response_switch_id;
+    bit<16> response_swithc_port_id;
+    bit<48> switch_authentication_code;    
 }
 
 header network_monitoring_message_header_t {
-    bit<32>     sender_switch_id;
+    bit<16> transit_switch_id;
+    bit<16> transit_switch_port_id;
 }
 header link_state_update_message_header_t {
-    bit<32>     sender_switch_id;
-    bit<32>     target_switch_id;
-    bit<16>     target_port_id;
+    bit<16> transit_switch_id;
+    bit<16> transit_switch_port_id;
+    bit<16> response_switch_id;
+    bit<16> response_switch_port_id;
 }
+
 header configuration_update_message_header_t {
-    bit<32>     update_switch_id;
-    bit<16>     update_switch_port_id;
+    bit<16> target_switch_id;
+    bit<16> control_switch_port_id;
 }
 header configuration_success_message_header_t {
-    bit<32>     update_switch_id;
+    bit<16> response_switch_id;
+    bit<16> control_switch_port_id;
+}
+
+header broadcast_sd_nm_message_header_t { }
+
+header inner_port_header_t {
+    bit<16> transit_switch_id;
+    bit<16> transit_switch_port_id;
+}
+
+header  send_payload_to_port_message_header_t {
+    bit<16> forwarding_port_id;
 }

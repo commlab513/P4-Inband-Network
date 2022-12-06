@@ -119,49 +119,51 @@ class Controller():
         cmd = ("cf_%s-%s-%s-%s"%(command,switch_ip,control_ip,output)).encode()
         length = pack("i",len(cmd))
         self.control_flow_socket.send(length+cmd)
+    
     # Funcitons for P4 Flow entries configuration, controlling and monitoring P4 inband network 
-    def _write_multicast_group_rules(self, p4info_helper):
+    def _write_broadcast_group_rules(self, p4info_helper):
         table_entries = []
-        for multicast_group_id in [200,201,202,203,204,205,206]:
-            replicas = []
-            for port in [1,2,3,4,5,6]:
-                if (multicast_group_id != port+200):
-                    replicas.append({"instance":1, "egress_port":port})
-            table_entries.append((0, 1, p4info_helper.buildMulticastGroupEntry(multicast_group_id=multicast_group_id,replicas=replicas)))
+        replicas = []
+        multicast_group_id  = 200
+        for port in [1,2,3,4,5,6]:
+            replicas.append({"instance":1, "egress_port":port})
+        table_entries.append((0, 1, p4info_helper.buildMulticastGroupEntry(multicast_group_id=multicast_group_id,replicas=replicas)))
         return table_entries
 
-    def _write_arp_forwarding_rules (self, action, p4info_helper, switch_ip, control_ip, priority, output_upstream, output_downstream):
+    def _write_arp_forwarding_rules (self, action, p4info_helper, ip_address, selected_action, priority=None, output=None):
         table_entries = []
+        if (selected_action == 1):
+            action_name = "MyIngress.set_output"
+            action_params = { "priority":priority, "port": output }
+        elif (selected_action == 2):
+            action_name = "MyIngress.set_controller_port"
+            action_params = {}
         table_entries.append((action, 0, p4info_helper.buildTableEntry(
             table_name="MyIngress.arp_forwarding",
-            match_fields={  "hdr.arp_rarp_ipv4.srcProtoAddr": switch_ip,  "hdr.arp_rarp_ipv4.dstProtoAddr": control_ip},
-            action_name="MyIngress.set_output",
-            action_params={ "priority":priority, "port": output_upstream })))
-        table_entries.append((action, 0, p4info_helper.buildTableEntry(
-            table_name="MyIngress.arp_forwarding",
-            match_fields={  "hdr.arp_rarp_ipv4.srcProtoAddr": control_ip,  "hdr.arp_rarp_ipv4.dstProtoAddr": switch_ip},
-            action_name="MyIngress.set_output",
-            action_params={ "priority":priority, "port": output_downstream })))
+            match_fields={  "hdr.arp_rarp_ipv4.dstProtoAddr": ip_address},
+            action_name=action_name,
+            action_params=action_params)))
         return table_entries
 
-    def _write_ipv4_forwarding_rules (self, action, p4info_helper, switch_ip, control_ip, priority, output_upstream, output_downstream, type_id = 0):
+    def _write_ipv4_forwarding_rules (self, action, p4info_helper, ip_address, type_id, selected_action, priority=None, output=None):
         table_entries = []
+        if (selected_action == 1):
+            action_name = "MyIngress.set_output"
+            action_params = { "priority":priority, "port": output }
+        elif (selected_action == 2):
+            action_name = "MyIngress.set_controller_port"
+            action_params = {}
         table_entries.append((action, 0, p4info_helper.buildTableEntry(
             table_name="MyIngress.ipv4_forwarding",
-            match_fields={  "hdr.ipv4.srcAddr": switch_ip,  "hdr.ipv4.dstAddr": control_ip, "metadata.forwarding_message_type": type_id},
-            action_name="MyIngress.set_output",
-            action_params={ "priority":priority, "port": output_upstream })))
-        table_entries.append((action, 0, p4info_helper.buildTableEntry(
-            table_name="MyIngress.ipv4_forwarding",
-            match_fields={  "hdr.ipv4.srcAddr": control_ip,  "hdr.ipv4.dstAddr": switch_ip, "metadata.forwarding_message_type": type_id},
-            action_name="MyIngress.set_output",
-            action_params={ "priority":priority, "port": output_downstream })))
+            match_fields={  "hdr.ipv4.dstAddr": ip_address, "metadata.forwarding_message_type": type_id},
+            action_name=action_name,
+            action_params=action_params)))
         return table_entries
     
     def _write_cu_switch_port_rules (self, action, p4info_helper, output):
         table_entry = [(action, 0, p4info_helper.buildTableEntry(
             table_name="MyIngress.cu_switch_port",
-            match_fields={  "standard_metadata.ingress_port":output},
+            match_fields={  "standard_metadata.ingress_port":output },
             action_name="NoAction",
             action_params={ }))]
         return table_entry
@@ -169,7 +171,7 @@ class Controller():
     def _write_sr_switch_port_rules (self, action, p4info_helper, output):
         table_entry = [(action, 0, p4info_helper.buildTableEntry(
             table_name="MyIngress.sr_switch_port",
-            match_fields={  "standard_metadata.ingress_port":output},
+            match_fields={  "standard_metadata.ingress_port":output },
             action_name="drop",
             action_params={ }))]
         return table_entry
@@ -182,76 +184,67 @@ class Controller():
         parsed_msg = {}
         payload = msg[34:]
         while (len(payload) > 0):
-            msg_type, msg_ctype = unpack("!BB", payload[0:2])
-            payload = payload[2:]
-            if msg_type == 0x2:
-                if (msg_ctype == 0x1):
-                    target_switch_id, target_port_id = unpack("!IH", payload[:6])
-                    temp_data = {
-                        "target_switch_id": target_switch_id, 
-                        "target_port_id": target_port_id
-                    }
-                    parsed_msg.setdefault("packet_in", temp_data)
-                    payload = payload[6:]
-                elif(msg_ctype == 0x2):
-                    switch_id = unpack("!I", payload[:4])[0]
-                    temp_data = {
-                        "switch_id": switch_id
-                    }
-                    parsed_msg.setdefault("switch_alive", temp_data)
-                    payload = payload[4:]
-                elif(msg_ctype == 0x3):
-                    switch_id = unpack("!I", payload[:4])[0]
-                    temp_data = {
-                        "switch_id": switch_id
-                    }
-                    parsed_msg.setdefault("check_state", temp_data)
-                    payload = payload[4:]
-            elif msg_type == 0x3:
-                if (msg_ctype == 0x2):
-                    code = [0,0,0,0,0,0]
-                    switch_id, code[0], code[1], code[2], code[3], code[4], code[5], switch_port_id = unpack("!IBBBBBBH", payload[:12])
-                    switch_auth_code = (code[0] << 40) + (code[1] << 32) + (code[2] << 24) + (code[3] << 16) + (code[4] << 8) + code[5]
-                    mac_address = "%02x:%02x:%02x:%02x:%02x:%02x" % unpack("BBBBBB",msg[:6])
-                    ovs_port = self.mac_address_list[mac_address] if (mac_address in self.mac_address_list.keys()) else None
-                    temp_data = {
-                        "switch_id": switch_id, 
-                        "auth_code": switch_auth_code, 
-                        "switch_port_id": switch_port_id,
-                        "ovs_port": ovs_port
-                    }
-                    parsed_msg.setdefault("switch_registration", temp_data)
-                    payload = payload[12:]
-                elif(msg_ctype == 0x3):
-                    sender_switch_id = unpack("!I", payload[:4])[0]
-                    target_switch_id = 0
-                    target_port_id = 0xff
-                    mac_address = "%02x:%02x:%02x:%02x:%02x:%02x" % unpack("BBBBBB",msg[0:6])
-                    if (mac_address in self.mac_address_list.keys()):
-                        target_port_id = msg[5]
-                    temp_data = {
-                        "sender_switch_id": sender_switch_id,
-                        "target_switch_id": target_switch_id,
-                        "target_port_id": target_port_id, 
-                    }
-                    parsed_msg.setdefault("link_state_update", temp_data)
-                    payload = payload[4:]
-                elif (msg_ctype == 0x4):
-                    sender_switch_id, target_switch_id, target_port_id = unpack("!IIH", payload[:10])
-                    temp_data = {
-                        "sender_switch_id": sender_switch_id,
-                        "target_switch_id": target_switch_id,
-                        "target_port_id": target_port_id, 
-                    }
-                    parsed_msg.setdefault("link_state_update", temp_data)
-                    payload = payload[10:]
-                elif(msg_ctype == 0x6):
-                    update_switch_id = unpack("!I", payload[:4])[0]
-                    temp_data = {
-                        "switch_id": update_switch_id,
-                    }
-                    parsed_msg.setdefault("configuration_sucess", temp_data)
-                    payload = payload[4:]
+            msg_type = unpack("!B", payload[0])
+            payload = payload[1:]
+            if msg_type == 0x2: # SR
+                code = [0,0,0,0,0,0]
+                transit_switch_id, transit_switch_port_id, response_switch_id, response_switch_port_id, code[0], code[1], code[2], code[3], code[4], code[5] = unpack("!HHHH", payload[:14])
+                switch_authentication_code = (code[0] << 40) + (code[1] << 32) + (code[2] << 24) + (code[3] << 16) + (code[4] << 8) + code[5]
+                mac_address = "%02x:%02x:%02x:%02x:%02x:%02x" % unpack("BBBBBB",msg[:6])
+                ovs_port = self.mac_address_list[mac_address] if (mac_address in self.mac_address_list.keys()) else 0xff
+                if (transit_switch_id == 0):
+                    transit_switch_port_id = ovs_port
+                temp_data = {
+                    "ovs_port": ovs_port, 
+                    "transit_switch_id": transit_switch_id, 
+                    "transit_switch_port_id": transit_switch_port_id, 
+                    "response_switch_id": response_switch_id, 
+                    "response_switch_port_id": response_switch_port_id, 
+                    "switch_authentication_code": switch_authentication_code, 
+                }
+                parsed_msg.setdefault("switch_registration", temp_data)
+                break
+            elif msg_type == 0x3: # NM
+                transit_switch_id, transit_switch_port_id = unpack("!HH", payload[:4])
+                response_switch_id = 0
+                response_switch_port_id = 0xff
+                mac_address = "%02x:%02x:%02x:%02x:%02x:%02x" % unpack("BBBBBB",msg[0:6])
+                if (mac_address in self.mac_address_list.keys()):
+                    response_switch_id = 0
+                    response_switch_port_id = msg[5]
+                temp_data = {
+                    "transit_switch_id": transit_switch_id,
+                    "response_switch_id": response_switch_id,
+                    "transit_switch_port_id": transit_switch_port_id, 
+                    "response_switch_port_id": response_switch_port_id
+                }
+                parsed_msg.setdefault("link_state_update", temp_data)
+                break
+            elif msg_type == 0x4: # LSU
+                transit_switch_id, transit_switch_port_id, response_switch_id, response_switch_port_id = unpack("!HHHH", payload[:8])
+                temp_data = {
+                    "transit_switch_id": transit_switch_id,
+                    "response_switch_id": response_switch_id,
+                    "transit_switch_port_id": transit_switch_port_id, 
+                    "response_switch_port_id": response_switch_port_id
+                }
+                parsed_msg.setdefault("link_state_update", temp_data)
+                break
+            elif msg_type == 0x6: # CS
+                response_switch_id, response_switch_port_id = unpack("!HH", payload[:4])
+                temp_data = {
+                    "response_switch_id": response_switch_id,
+                    "response_switch_port_id": response_switch_port_id
+                }
+                parsed_msg.setdefault("configuration_sucess", temp_data)
+                break
+            elif msg_type == 0x8: # SQR
+                response_switch_id, response_switch_port_id = unpack("!HH", payload[:4])
+                temp_data = {
+                    "response_switch_id": response_switch_id,
+                    "response_switch_port_id": response_switch_port_id,
+                }
+                parsed_msg.setdefault("switch_alive_response", temp_data)
                 break
         return parsed_msg
     
@@ -262,34 +255,25 @@ class Controller():
                 if (msg[23]  == 254):
                     parsed_payload = self.parsing_control_message(msg)
                     if ("switch_registration" in parsed_payload):
-                        switch_id = parsed_payload["switch_registration"]["switch_id"]
                         if (self.configuration_network_flag == False and switch_id not in self.switch_information):
-                            Thread(target=self.switch_registration, args=(parsed_payload,self.switch_registration_information[switch_id],)).start()
+                            Thread(target=self.switch_registration, args=(parsed_payload,)).start()
                     elif ("link_state_update" in parsed_payload):
-                        src_switch_id = parsed_payload["link_state_update"]["sender_switch_id"]
-                        dst_switch_id = parsed_payload["link_state_update"]["target_switch_id"]
-                        port = parsed_payload["link_state_update"]["target_port_id"]
+                        src_switch_id = parsed_payload["link_state_update"]["transit_switch_id"]
+                        dst_switch_id = parsed_payload["link_state_update"]["response_switch_id"]
+                        port = parsed_payload["link_state_update"]["response_switch_port_id"]
                         if (not(dst_switch_id == 0 and port == 0xff)):
                             Thread(target=self.network_monitoring_process, args=(src_switch_id,dst_switch_id,port, )).start()
                     elif ("configuration_sucess" in parsed_payload):
-                        if "packet_in" in parsed_payload:
-                            packet_in_switch_id = parsed_payload["packet_in"]["target_switch_id"]
-                        else:
-                            packet_in_switch_id = 0
-                        update_switch_id = parsed_payload["configuration_sucess"]["switch_id"]
-                        if (packet_in_switch_id, update_switch_id) in self.configuration_update_waiting_list:
-                            del self.configuration_update_waiting_list[(packet_in_switch_id, update_switch_id)]
-                    elif ("switch_alive" in parsed_payload):
-                        sw_id = parsed_payload["switch_alive"]["switch_id"]
-                        self.switch_information[sw_id].node_detection = 1
-                    elif ("check_state" in parsed_payload):
-                        sw_id = parsed_payload["check_state"]["switch_id"]
-                        self.recovery_node_list.remove(sw_id)
+                        response_switch_id = parsed_payload["configuration_sucess"]["response_switch_id"]
+                        if response_switch_id in self.configuration_update_waiting_list:
+                            del self.configuration_update_waiting_list[response_switch_id]
+                    elif ("switch_alive_response" in parsed_payload):
+                        self.switch_information[parsed_payload["switch_alive_response"]["response_switch_id"]].node_detection = 1
         except(KeyboardInterrupt):
             return
         return
 
-    def network_monitoring_process(self, src_switch_id,dst_switch_id,port):
+    def network_monitoring_process(self, src_switch_id, dst_switch_id, port):
         if (src_switch_id == dst_switch_id):
             return
         elif (dst_switch_id in self.topology and src_switch_id in self.topology[dst_switch_id] and self.topology[dst_switch_id][src_switch_id] != port):
@@ -312,18 +296,14 @@ class Controller():
                     self.direct_LSP[self.direct_link_set.index((src_switch_id, dst_switch_id))] = 1
         return
     
-    def switch_registration (self, parsed_payload, swinfo):
-        control_ip = self.control_socket['ip'][0]
-        switch_ip = swinfo["switch_ip"]
-        switch_id = parsed_payload["switch_registration"]["switch_id"]
-        output_port = parsed_payload["switch_registration"]["switch_port_id"]
+    def switch_registration (self, parsed_payload):
+        switch_id = parsed_payload["switch_registration"]["response_switch_id"]
+        switch_ip = self.switch_registration_information[switch_id]["switch_ip"]
+        output_port = parsed_payload["switch_registration"]["response_switch_port_id"]
+        pre_switch_id = parsed_payload["switch_registration"]["transit_switch_id"]
+        pre_forward_port = parsed_payload["switch_registration"]["transit_switch_port_id"]
         ovs_port = parsed_payload["switch_registration"]["ovs_port"]
-        if ("packet_in" in parsed_payload):
-            pre_switch_id = parsed_payload["packet_in"]["target_switch_id"]
-            pre_forward_port = parsed_payload["packet_in"]["target_port_id"]
-        else:
-            pre_switch_id = 0
-            pre_forward_port = ovs_port
+
         with self.thread_lock:
             if (switch_id not in self.switch_information):
                 self.switch_information.setdefault(switch_id, None)
@@ -339,7 +319,7 @@ class Controller():
                 return 
             p4info_helper = p4_runtime.helper.P4InfoHelper(P4_FILE_PATH+"s%d/switch.p4info.txt"%switch_id)
             json_file = P4_FILE_PATH+"s%d/switch.json"%switch_id
-            if ("packet_in" in parsed_payload):
+            if (pre_switch_id > 0):
                 path = self.switch_information[pre_switch_id].control_path
                 p4info_helper = self.switch_information[pre_switch_id].p4info_helper
                 p4_table_entries = self._write_cu_switch_port_rules(0, p4info_helper, pre_forward_port)
@@ -356,13 +336,11 @@ class Controller():
                         p4_table_entries = []
                         p4info_helper = self.switch_information[path[i]].p4info_helper
                         if (i==len(path)-1):
-                            output_upstream = self.topology[path[i]][path[i-1]]
-                            output_downstream = pre_forward_port
+                            output = pre_forward_port
                         else:
-                            output_upstream = self.topology[path[i]][path[i-1]]
-                            output_downstream = self.topology[path[i]][path[i+1]]
-                        p4_table_entries += self._write_arp_forwarding_rules(0, p4info_helper, switch_ip, control_ip, 1, output_upstream, output_downstream)
-                        p4_table_entries += self._write_ipv4_forwarding_rules(0, p4info_helper, switch_ip, control_ip, 1, output_upstream, output_downstream, 0)
+                            output = self.topology[path[i]][path[i+1]]
+                        p4_table_entries += self._write_arp_forwarding_rules(0, p4info_helper, switch_ip, 1, 1, output)
+                        p4_table_entries += self._write_ipv4_forwarding_rules(0, p4info_helper, switch_ip, 0, 1, 1, output)
                         self.switch_information[path[i]].grpc_connection.WriteTableEntry(p4_table_entries)
                 grpc_connection = p4_runtime.bmv2.Bmv2SwitchConnection(name='switch-%d'%switch_id, address='%s:50051'%(switch_ip), device_id=switch_id, low=1)
                 item = grpc_connection.MasterArbitrationUpdate()
@@ -378,10 +356,14 @@ class Controller():
                     del self.switch_information[switch_id]
                     return
                 grpc_connection.SetConfigureForwardingPipeline(action = 1, p4info=p4info_helper.p4info, bmv2_json_file_path=json_file)
+                control_ip = self.control_socket['ip'][0]
                 p4_table_entries = []
-                p4_table_entries += self._write_multicast_group_rules(p4info_helper)
+                p4_table_entries += self._write_broadcast_group_rules(p4info_helper)
                 p4_table_entries += self._write_cu_switch_port_rules(0, p4info_helper, output_port)
+                p4_table_entries += self._write_arp_forwarding_rules(0, p4info_helper, control_ip, 2)
+                p4_table_entries += self._write_ipv4_forwarding_rules(0, p4info_helper, control_ip, 0, 2)
                 grpc_connection.WriteTableEntry(p4_table_entries)
+
                 self.configuration_update_waiting_list.update(self.configuration_update_message_generator([(pre_switch_id,switch_id,pre_forward_port,output_port)]))
                 Timer(0.002*delay, self.send_configuration_update_message).start()
                 grpc_connection.SetConfigureForwardingPipeline(action = 3, p4info=p4info_helper.p4info, bmv2_json_file_path=json_file)
@@ -417,14 +399,15 @@ class Controller():
         waiting_list = {}
         for i in configuration_update_messages:
             pre_switch_id, switch_id, pre_forward_port, output_port = i
-            Payload = pack("!IH",  switch_id, output_port)
             if (pre_switch_id == 0):
-                IBCHeader = pack("!BB", 0x3, 0x5)
-                switch_ip = "224.0.0.200"
+                IBCHeader = b''
+                Payload = pack("!BHH",  switch_id, output_port)
+                switch_ip = self.switch_information[switch_id].switch_ip
             else:
-                IBCHeader = pack("!BBIHBB", 0x1, 0x1, pre_switch_id, pre_forward_port, 0x3, 0x5)
+                IBCHeader = pack("!BH", 0xA, pre_forward_port)
+                Payload = bytes(Ehter(src=self.switch_registration_information[switch_id]["mac_address"], dst=self.switch_registration_information[switch_id]["mac_address"])/IP(src=self.switch_infomration[pre_switch_id].switch_ip, dst=self.switch_infomration[switch_id].switch_ip, portocol=254))+pack("!BHH", 0x5, switch_id, output_port)
                 switch_ip = self.switch_information[pre_switch_id].switch_ip
-            waiting_list.setdefault((pre_switch_id, switch_id), {"message":IBCHeader+Payload, "switch_ip": switch_ip})
+            waiting_list.setdefault(switch_id, {"message":IBCHeader+Payload, "switch_ip": switch_ip})
         return waiting_list
 
     def send_configuration_update_message (self):
@@ -443,20 +426,20 @@ class Controller():
     def switch_discovery(self, sw_id=None):
         try:
             if (self.configuration_network_flag == False and self.Process_Stop_Flag == False):
-                Payload = b''
+                Payload = pack("!BHH", 0x1, 0x00, 0x00)
                 if (sw_id == None):
                     for sw_id in dict(self.switch_information):
                         if (self.switch_information[sw_id] != None):
                             if (sw_id == 0):
-                                IBCHeader = pack("!BB", 0x3,0x1)
+                                IBCHeader = b''
                                 switch_ip = "224.0.0.200"
                             else:
-                                IBCHeader = pack("!BBIHBB", 0x1, 0x1, sw_id, 200, 0x3, 0x1)
+                                IBCHeader = pack("!B", 0x9)
                                 switch_ip = self.switch_information[sw_id].switch_ip
-                            self.control_socket["socket"][0].sendto(IBCHeader+Payload, (switch_ip,0))
                 else: 
-                    IBCHeader = pack("!BBIHBB", 0x1, 0x1, sw_id, 200, 0x3, 0x1)
-                    self.control_socket["socket"][0].sendto(IBCHeader+Payload, (self.switch_information[sw_id].switch_ip,0))
+                    IBCHeader = pack("!B", 0x9)
+                    swithc_ip = self.switch_information[sw_id].switch_ip
+                self.control_socket["socket"][0].sendto(IBCHeader+Payload, (switch_ip,0))
         except(KeyboardInterrupt):
             return
         return
@@ -465,31 +448,18 @@ class Controller():
         for sw_id in list(self.switch_information.keys()):
             try:
                 if (sw_id in self.switch_information and self.switch_information[sw_id] != None):
+                    Payload = pack("!BHH", 0x3, 0x00, 0x00)
                     if (sw_id == 0):
-                        IBCHeader = pack("!BB", 0x3,0x3)                
-                        Payload = pack("!I", 0x0)
+                        IBCHeader = b''
                         switch_ip = "224.0.0.200"
                     else:
+                        IBCHeader = pack("!B", 0x9)
                         switch_ip = self.switch_information[sw_id].switch_ip
                         if (len(self.switch_information[sw_id].node_detection_path) > 0):
-                            Payload = pack("!BBI", 0x1, 0x2, sw_id)
-                            with self.thread_lock:
-                                self.control_socket["socket"][1].sendto(Payload, (switch_ip,0))
-                        IBCHeader = pack("!BBIHBB", 0x1, 0x1, sw_id, 200, 0x3, 0x3)
-                        Payload = pack("!I", sw_id)
-                    with self.thread_lock:
-                        self.control_socket["socket"][0].sendto(IBCHeader+Payload, (switch_ip,0))
-            except Exception as e:
-                print ("network monitoring")
-                error_class = e.__class__.__name__
-                detail = e.args[0]
-                cl, exc, tb = sys.exc_info()
-                lastCallStack = traceback.extract_tb(tb)[-1]
-                fileName = lastCallStack[0]
-                lineNum = lastCallStack[1]
-                funcName = lastCallStack[2]
-                errMsg = "File \"{}\", line {}, in {}: [{}] {}".format(fileName, lineNum, funcName, error_class, detail)
-                print(errMsg)
+                            node_detection_payload = pack("!BH", 0x7, sw_id)
+                            self.control_socket["socket"][1].sendto(node_detection_payload, (switch_ip,0))
+                    self.control_socket["socket"][0].sendto(IBCHeader+Payload, (switch_ip,0))
+            except:
                 pass
         return
     
@@ -660,8 +630,8 @@ class Controller():
                             insert_list.append(recovery_path[p])
                         p4info_helper = self.switch_information[recovery_path[p]].p4info_helper  
                         action = 1 if (recovery_path[p] in original_path) else 0
-                        entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]])
-                        entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]], 0)
+                        entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
+                        entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, 0, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
                         if (recovery_path[p] not in insert_entries):
                             insert_entries.setdefault(recovery_path[p], entries)
                         else:
@@ -675,8 +645,8 @@ class Controller():
                             if (original_path[p] not in delete_list):
                                 delete_list.append(original_path[p])
                             p4info_helper = self.switch_information[original_path[p]].p4info_helper
-                            entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[p]][original_path[p-1]], self.topology[original_path[p]][original_path[p+1]])
-                            entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[p]][original_path[p-1]], self.topology[original_path[p]][original_path[p+1]], 0)
+                            entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, 1, 1, self.topology[original_path[p]][original_path[p+1]])
+                            entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, 0, 1, 1, self.topology[original_path[p]][original_path[p+1]])
                             if (original_path[p] not in delete_entries):
                                 delete_entries.setdefault(original_path[p], entries)
                             else:
@@ -742,7 +712,8 @@ class Controller():
                         self.switch_information[sw_id].node_detection_path = list(path)
                         for i in range(1, len(path)-1):
                             p4info_helper = self.switch_information[path[i]].p4info_helper
-                            entries = self._write_ipv4_forwarding_rules(0, p4info_helper, switch_ip, control_ip, 1,  self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]], 1)
+                            entries = self._write_ipv4_forwarding_rules(0, p4info_helper, switch_ip, 1, 1, 7, self.topology[path[i]][path[i+1]])
+                            entries = self._write_ipv4_forwarding_rules(0, p4info_helper, control_ip, 1, 1, 7, self.topology[path[i]][path[i-1]])
                             self.switch_information[path[i]].grpc_connection.WriteTableEntry(entries)
     
     # Functions for controlling P4 inband network
@@ -908,8 +879,8 @@ class Controller():
                         delete_list.append(recovery_path[p])
                     p4info_helper = self.switch_information[recovery_path[p]].p4info_helper  
                     action = 2
-                    entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]])
-                    entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]], 0)
+                    entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
+                    entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, 0, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
                     if (recovery_path[p] not in delete_entries):
                         delete_entries.setdefault(recovery_path[p], entries)
                     else:
@@ -1042,8 +1013,8 @@ class Controller():
                                 insert_list.append(recovery_path[p])
                             p4info_helper = self.switch_information[recovery_path[p]].p4info_helper  
                             action = 1 if (recovery_path[p] in original_path) else 0
-                            entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]])
-                            entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[recovery_path[p]][recovery_path[p-1]], self.topology[recovery_path[p]][recovery_path[p+1]], 0)
+                            entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
+                            entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, 0, 1, 1, self.topology[recovery_path[p]][recovery_path[p+1]])
                             if (recovery_path[p] not in insert_entries):
                                 insert_entries.setdefault(recovery_path[p], entries)
                             else:
@@ -1055,8 +1026,8 @@ class Controller():
                             elif (original_path[p] not in recovery_path):
                                 action = 2
                                 p4info_helper = self.switch_information[original_path[p]].p4info_helper
-                                entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[p]][original_path[p-1]], self.topology[original_path[p]][original_path[p+1]])
-                                entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[p]][original_path[p-1]], self.topology[original_path[p]][original_path[p+1]], 0)
+                                entries = self._write_arp_forwarding_rules(action, p4info_helper, switch_ip, 1, 1, self.topology[original_path[p]][original_path[p+1]])
+                                entries += self._write_ipv4_forwarding_rules(action, p4info_helper, switch_ip, 0, 1, 1, self.topology[original_path[p]][original_path[p+1]])
                                 if (original_path[p] not in delete_entries):
                                     delete_entries.setdefault(original_path[p], entries)
                                 else:
@@ -1119,8 +1090,8 @@ class Controller():
         self.ovs_command(2, switch_ip, control_ip, self.topology[path[0]][path[1]])
         for i in range(1,len(path)-1):
             if (path[i] in self.switch_information):
-                entries = self._write_arp_forwarding_rules(2, self.switch_information[path[i]].p4info_helper,  switch_ip, control_ip, 1, self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]])
-                entries += self._write_ipv4_forwarding_rules(2, self.switch_information[path[i]].p4info_helper,  switch_ip, control_ip, 1, self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]], 0)
+                entries = self._write_arp_forwarding_rules(2, self.switch_information[path[i]].p4info_helper,  switch_ip, 1, 1, self.topology[path[i]][path[i+1]])
+                entries += self._write_ipv4_forwarding_rules(2, self.switch_information[path[i]].p4info_helper,  switch_ip, 0, 1, 1, self.topology[path[i]][path[i+1]])
                 self.switch_information[path[i]].grpc_connection.WriteTableEntry(entries)
         path = self.switch_information[sw_id].node_detection_path
         if (len(path) > 0):
@@ -1128,7 +1099,8 @@ class Controller():
             self.ovs_command(2, switch_ip, control_ip, self.topology[path[0]][path[1]])
             for i in range(1,len(path)-1):
                 if (path[i] in self.switch_information):
-                    entries = self._write_ipv4_forwarding_rules(2, self.switch_information[path[i]].p4info_helper,  switch_ip, control_ip, 1, self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]], 1)
+                    entries = self._write_ipv4_forwarding_rules(2, self.switch_information[path[i]].p4info_helper, switch_ip, 1, 1, 7, self.topology[path[i]][path[i+1]])
+                    entries = self._write_ipv4_forwarding_rules(2, self.switch_information[path[i]].p4info_helper, control_ip, 1, 1, 7, self.topology[path[i]][path[i-1]])
                     self.switch_information[path[i]].grpc_connection.WriteTableEntry(entries)
         for i in self.topology[sw_id]:
             if (i != 0):
@@ -1173,14 +1145,14 @@ class Controller():
                 self.ovs_command(1, switch_ip, control_ip, self.topology[control_path[0]][control_path[1]])
                 for i in range(1, len(control_path)-1):
                     action = 0 if (control_path[i] not in original_path) else 1
-                    entries = self._write_arp_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[control_path[i]][control_path[i-1]], self.topology[control_path[i]][control_path[i+1]])
-                    entries += self._write_ipv4_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[control_path[i]][control_path[i-1]], self.topology[control_path[i]][control_path[i+1]], 0)
+                    entries = self._write_arp_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, 1, 1, self.topology[control_path[i]][control_path[i+1]])
+                    entries += self._write_ipv4_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, 0, 1, 1, self.topology[control_path[i]][control_path[i+1]])
                     self.switch_information[control_path[i]].grpc_connection.WriteTableEntry(entries)
                 for i in range(1, len(original_path)-1):
                     if (original_path[i] not in control_path):
                         action = 2
-                        entries = self._write_arp_forwarding_rules(action, self.switch_information[original_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[i]][original_path[i-1]], self.topology[original_path[i]][original_path[i+1]])
-                        entries += self._write_ipv4_forwarding_rules(action, self.switch_information[original_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[i]][original_path[i-1]], self.topology[original_path[i]][original_path[i+1]], 0)
+                        entries = self._write_arp_forwarding_rules(action, self.switch_information[original_path[i]].p4info_helper, switch_ip, 1, 1, self.topology[original_path[i]][original_path[i+1]])
+                        entries += self._write_ipv4_forwarding_rules(action, self.switch_information[original_path[i]].p4info_helper, switch_ip, 0, 1, 1, self.topology[original_path[i]][original_path[i+1]], 0)
                         self.switch_information[original_path[i]].grpc_connection.WriteTableEntry(entries)
                 self.configuration_update_waiting_list = self.configuration_update_message_generator([(control_path[-2], control_path[-1], self.topology[control_path[-2]][control_path[-1]], self.topology[control_path[-1]][control_path[-2]])])
                 result = self.send_configuration_update_message()
@@ -1191,14 +1163,16 @@ class Controller():
                 self.switch_information[sw_id].node_detection_path = list(path)
                 self.ovs_command(1, switch_ip, control_ip, self.topology[path[0]][path[1]])
                 for i in range(1,len(path)-1):
-                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]], 1)
+                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, switch_ip, 1, 1, 7, self.topology[path[i]][path[i+1]])
+                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, control_ip, 1, 1, 7, self.topology[path[i]][path[i-1]])
                     self.switch_information[path[i]].grpc_connection.WriteTableEntry(entries)
             for o_sw_id in self.orginal_switch_information:
                 if (o_sw_id != sw_id and len(self.switch_information[o_sw_id].node_detection_path) > 0 and sw_id in self.orginal_switch_information[o_sw_id]['node_detection_path']):
                     switch_ip = self.switch_information[o_sw_id].switch_ip
                     path = self.orginal_switch_information[o_sw_id]['node_detection_path']
                     i = path.index(sw_id)
-                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[path[i]][path[i-1]], self.topology[path[i]][path[i+1]], 1)
+                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, switch_ip, 1, 1, 7, self.topology[path[i]][path[i+1]])
+                    entries = self._write_ipv4_forwarding_rules(0, self.switch_information[path[i]].p4info_helper, control_ip, 1, 1, 7, self.topology[path[i]][path[i-1]])
                     self.switch_information[path[i]].grpc_connection.WriteTableEntry(entries)
         self.control_path_tree = copy.deepcopy(self.orginal_control_path_tree)
         tree = self.recovery_path_tree[failure_id]["tree"]
@@ -1226,19 +1200,21 @@ class Controller():
             result = self.send_configuration_update_message()
             for i in range(1, len(control_path)-1):
                 action = 1 if (control_path[i] in original_path) else 0
-                entries = self._write_arp_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[control_path[i]][control_path[i-1]], self.topology[control_path[i]][control_path[i+1]])
-                entries += self._write_ipv4_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[control_path[i]][control_path[i-1]], self.topology[control_path[i]][control_path[i+1]], 0)
+                entries = self._write_arp_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, 1, 1, self.topology[control_path[i]][control_path[i+1]])
+                entries += self._write_ipv4_forwarding_rules(action, self.switch_information[control_path[i]].p4info_helper, switch_ip, 0, 1, 1, self.topology[control_path[i]][control_path[i+1]])
                 self.switch_information[control_path[i]].grpc_connection.WriteTableEntry(entries)
             for i in range(1, len(original_path)-1):
                 if (original_path[i] not in control_path):
-                    entries = self._write_arp_forwarding_rules(2, self.switch_information[original_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[i]][original_path[i-1]], self.topology[original_path[i]][original_path[i+1]])
-                    entries += self._write_ipv4_forwarding_rules(2, self.switch_information[original_path[i]].p4info_helper, switch_ip, control_ip, 1, self.topology[original_path[i]][original_path[i-1]], self.topology[original_path[i]][original_path[i+1]], 0)
+                    entries = self._write_arp_forwarding_rules(2, self.switch_information[original_path[i]].p4info_helper, switch_ip, 1, 1, self.topology[original_path[i]][original_path[i+1]])
+                    entries += self._write_ipv4_forwarding_rules(2, self.switch_information[original_path[i]].p4info_helper, switch_ip, 0, 1, 1, self.topology[original_path[i]][original_path[i+1]])
                     self.switch_information[original_path[i]].grpc_connection.WriteTableEntry(entries)
         return 
     # Flow entries of background traffic
     def background_traffic_path_configure(self, hostA, hostB, nodeA, nodeB):
-        p4_table_entries = self._write_arp_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostA, hostB, 0, self.topology[nodeA][nodeB], 250)
-        p4_table_entries += self._write_ipv4_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostA, hostB, 0, self.topology[nodeA][nodeB], 250, 0)
+        p4_table_entries = self._write_arp_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostA, 1, 0, self.topology[nodeA][nodeB])
+        p4_table_entries += self._write_ipv4_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostA, 0, 1, 0, self.topology[nodeA][nodeB])
+        p4_table_entries = self._write_arp_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostB, 1, 0, 250)
+        p4_table_entries += self._write_ipv4_forwarding_rules(0, self.switch_information[nodeA].p4info_helper, hostB, 0, 1, 0, 250)
         self.switch_information[nodeA].grpc_connection.WriteTableEntry(p4_table_entries)
         return 
     
